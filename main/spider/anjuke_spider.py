@@ -3,14 +3,12 @@
 import time
 import requests
 from bs4 import BeautifulSoup
-from main.model.anjuke import anjuke_house
-from main.util.dbutil import *
 
 # 获取指定url的网页源码
 def get_html(url):
     # 设置请求头，防止被网站屏蔽
     headers  = {
-        'User-Agent':'User-Agent:Mozilla/5.0 (Windows; U; Windows NT 6.1; en-us) AppleWebKit/534.50 (KHTML, like Gecko) Version/5.1 Safari/534.50',
+        'User-Agent':'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36',
     }
     resp = requests.get(url, headers=headers)
     if resp.status_code == 200:
@@ -33,9 +31,6 @@ def get_data(url):
     # 获取小区名称
     villages = soup.select('div.zu-info > address > a')
 
-    # 创建表格
-    create_table()
-
     # 保存数据
     for detail,house_type,price,village in zip(details,types,prices,villages):
         # 获取房屋描述
@@ -46,10 +41,7 @@ def get_data(url):
         price = price.get_text()
         # 获取小区名称
         village = village.get_text()
-        # 实例化对象并绑定数据
-        house = anjuke_house(detail=detail, house_type=house_type, price=price, village=village)
-        # 将数据保存到数据库
-        save(house)
+        print(detail,'\n',house_type,'\n',price,'\n',village)
 
     # 获取下一页地址
     next_page = soup.select('a.aNxt')
@@ -62,7 +54,7 @@ if __name__ == '__main__':
     # 记录起始时间
     start_time = time.time()
     # 设定起始页
-    url = 'https://cd.zu.anjuke.com/fangyuan/p9/'
+    url = 'https://cd.zu.anjuke.com/?from=navigation'
     while True:
         time.sleep(1.5) # 减慢访问频率，防止出现验证
         url = get_data(url)
