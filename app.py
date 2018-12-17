@@ -2,6 +2,7 @@
 '''服务器网关接口类'''
 from flask import Flask, render_template
 from main.util.dbutil import *
+from main.util.wordutil import *
 
 # 实例化WSGI应用对象
 app = Flask(__name__)
@@ -37,6 +38,12 @@ def rent_distribution(house_type):
         prices.append(result.price)     # 租金
         nums.append(result.num)     # 对应租金的房屋数量
     return render_template("rent.html", prices = prices, nums = nums)
+
+# 生成房屋描述词云图
+@app.route('/wordcloud')
+def wordcloud():
+    words = get_details()
+    return render_template("detail.html", words = list(words.keys()), nums = list(words.values()))
 
 if __name__ == '__main__':
     # 设置debug=True，更改了代码之后会自动重新加载，不用手动重新运行
