@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>房屋描述分析</title>
+</head>
+<body>
+<!-- 为ECharts准备一个具备大小（宽高）的Dom -->
+<div id="main" style="width: 70%;height:800px;margin: 0 auto;"></div>
+
+<!-- 引入 echarts.js -->
+<script src="/static/js/echarts.min.js"></script>
+<!-- 引入词云js -->
+<script src="/static/js/echarts-wordcloud.min.js"></script>
+<script>
+    // 获取数据
+    var nums = '{{nums|tojson|safe}}'
+    var words = '{{words|tojson|safe}}'
+
+    // 将获取到的数据处理为数组
+    nums = nums.slice(1, nums.length-1).split(',')
+    words = words.slice(1, words.length-1).split(',')
+    var data = []
+    for (var i = 0; i < nums.length; i++) {
+        data.push({name:words[i],value:Math.sqrt(nums[i])})
+    }
+
+    // 基于准备好的dom，初始化echarts实例
+    var chart = echarts.init(document.getElementById('main'));
+
+    var maskImage = new Image();
+
+    var option = {
+        series: [ {
+            type: 'wordCloud',
+            sizeRange: [10, 100],
+            rotationRange: [-90, 90],
+            rotationStep: 45,
+            gridSize: 2,
+            shape: 'pentagon',
+            maskImage: maskImage,
+            drawOutOfBound: false,
+            textStyle: {
+                normal: {
+                    color: function () {
+                        return 'rgb(' + [
+                            Math.round(Math.random() * 160),
+                            Math.round(Math.random() * 160),
+                            Math.round(Math.random() * 160)
+                        ].join(',') + ')';
+                    }
+                },
+                emphasis: {
+                    color: 'red'
+                }
+            },
+            data: data.sort(function (a, b) {
+                return b.value  - a.value;
+            })
+        } ]
+    };
+
+    maskImage.onload = function () {
+        option.series[0].maskImage
+        chart.setOption(option);
+    }
+
+    // 设置底图路径
+    maskImage.src = '/static/img/ios-leaf.png';
+
+    window.onresize = function () {
+        chart.resize();
+    }
+</script>
+</body>
+</html>
