@@ -11,3 +11,5 @@ pip install beautifulsoup4
 pip install lxml
 ##### Web框架：
 pip install Flask
+##### 分词工具：
+pip install jieba
