@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>汇总分析</title>
+    <!-- 导入Bootstrap样式 -->
+    <link href="/static/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+<div class="container-fluid" style="width: 70%;margin-top: 20px">
+    <div class="row">
+        <!--户型饼图面板-->
+        <div class="col-md-6">
+            <div class="panel panel-default">
+                <div id="type" class="panel-body" style="height: 400px"></div>
+            </div>
+        </div>
+        <!--词云图面板-->
+        <div class="col-md-6">
+            <div class="panel panel-default">
+                <div id="wordcloud" class="panel-body" style="height: 400px"></div>
+            </div>
+        </div>
+    </div>
+    <!--对应户型租金分布情况面板-->
+    <div class="panel panel-default">
+        <div class="panel-heading"><span></span>户型租金分布情况</div>
+        <div id="rent" class="panel-body" style="height: 400px"></div>
+    </div>
+</div>
+
+<!-- 引入 echarts.js -->
+<script src="/static/js/echarts.min.js"></script>
+<!-- 引入词云js -->
+<script src="/static/js/echarts-wordcloud.min.js"></script>
+<!-- jQuery  -->
+<script src="/static/js/jquery-3.3.1.min.js"></script>
+<!-- 加载 Bootstrap 的所有 JavaScript 插件 -->
+<script src="/static/js/bootstrap.min.js"></script>
+
+<script type="text/javascript">
+    // 页面初始化时执行
+    $(
+        initType(),
+        initWordcloud()
+    );
+
+    // 加载房屋类型饼图
+    function initType() {
+        $.post(
+            '/ajax/getTypeAJAX',     //异步获取房屋类型数据
+            function(msg){
+                // 获取数据
+                var types = msg.types;
+                var data = msg.data;
+
+                // 基于准备好的dom，初始化echarts实例
+                var chart = echarts.init(document.getElementById('type'));
+                var option = {
+                    tooltip : {
+                        trigger: 'item',
+                        formatter: "{a} <br/>{b} : {c} ({d}%)"
+                    },
+                    legend: {
+                        orient: 'vertical',
+                        left: 'left',
+                        data: types     // 户型数据
+                    },
+                    series : [
+                        {
+                            name: '房间户型占比',
+                            type: 'pie',
+                            radius : '55%',
+                            center: ['50%', '60%'],
+                            data: data,      // 各户型房屋数量
+                            itemStyle: {
+                                emphasis: {
+                                    shadowBlur: 10,
+                                    shadowOffsetX: 0,
+                                    shadowColor: 'rgba(0, 0, 0, 0.5)'
+                                }
+                            }
+                        }
+                    ]
+                };
+                chart.setOption(option);
+
+                // 给饼图扇区添加点击函数，点击后加载对应户型数据
+                chart.on("click", eConsole);
+                function eConsole(param) {
+                    getRentByType(types[param.dataIndex]);
+                }
+
+                // 默认加载一个类型的房屋租金分布图
+                getRentByType(types[0]);
+            }
+        );
+    }
+
+    // 加载词云图
+    function initWordcloud() {
+        $.post(
+            '/ajax/getWordsAJAX',     //异步获取词云数据
+            function(msg){
+                var data = msg.data;
+
+                var chart = echarts.init(document.getElementById('wordcloud'));
+                var maskImage = new Image();
+                var option = {
+                    series: [ {
+                        type: 'wordCloud',
+                        sizeRange: [10, 100],
+                        rotationRange: [-90, 90],
+                        rotationStep: 45,
+                        gridSize: 2,
+                        shape: 'pentagon',
+                        maskImage: maskImage,
+                        drawOutOfBound: false,
+                        textStyle: {
+                            normal: {
+                                color: function () {
+                                    return 'rgb(' + [
+                                        Math.round(Math.random() * 160),
+                                        Math.round(Math.random() * 160),
+                                        Math.round(Math.random() * 160)
+                                    ].join(',') + ')';
+                                }
+                            },
+                            emphasis: {
+                                color: 'red'
+                            }
+                        },
+                        data: data.sort(function (a, b) {
+                            return b.value  - a.value;
+                        })
+                    } ]
+                };
+
+                maskImage.onload = function () {
+                    option.series[0].maskImage
+                    chart.setOption(option);
+                }
+
+                // 设置底图路径
+                maskImage.src = '/static/img/ios-leaf.png';
+
+                window.onresize = function () {
+                    chart.resize();
+                }
+            }
+        );
+    }
+
+    // 通过房屋类型获取租金分布图
+    function getRentByType(param) {
+        // 设置租金分布面板标题
+        $('span').html(param);
+        $.post(
+            '/ajax/getRentByType',       //异步获取对应户型房屋租金分布情况数据
+            {type:param},
+            function(data){
+                var prices = data.prices;
+                var nums = data.pnums;
+
+                var myChart = echarts.init(document.getElementById('rent'));
+                // 指定图表的配置项和数据
+                var option = {
+                    tooltip: {
+                        trigger: 'axis',
+                        position: function (pt) {
+                            return [pt[0], '10%'];
+                        }
+                    },
+                    toolbox: {
+                        feature: {
+                            dataZoom: {
+                                yAxisIndex: 'none'
+                            },
+                            restore: {},
+                            saveAsImage: {}
+                        }
+                    },
+                    xAxis: {
+                        type: 'category',
+                        boundaryGap: false,
+                        data: prices
+                    },
+                    yAxis: {
+                        type: 'value',
+                        boundaryGap: [0, '100%']
+                    },
+                    dataZoom: [{
+                        type: 'inside',
+                        start: 0,
+                        end: 100
+                    }, {
+                        start: 0,
+                        end: 10,
+                        handleIcon: 'M10.7,11.9v-1.3H9.3v1.3c-4.9,0.3-8.8,4.4-8.8,9.4c0,5,3.9,9.1,8.8,9.4v1.3h1.3v-1.3c4.9-0.3,8.8-4.4,8.8-9.4C19.5,16.3,15.6,12.2,10.7,11.9z M13.3,24.4H6.7V23h6.6V24.4z M13.3,19.6H6.7v-1.4h6.6V19.6z',
+                        handleSize: '80%',
+                        handleStyle: {
+                            color: '#fff',
+                            shadowBlur: 3,
+                            shadowColor: 'rgba(0, 0, 0, 0.6)',
+                            shadowOffsetX: 2,
+                            shadowOffsetY: 2
+                        }
+                    }],
+                    series: [
+                        {
+                            name:'房屋数量',
+                            type:'line',
+                            smooth:true,
+                            symbol: 'none',
+                            sampling: 'average',
+                            itemStyle: {
+                                color: 'rgb(255, 70, 131)'
+                            },
+                            areaStyle: {
+                                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{
+                                    offset: 0,
+                                    color: 'rgb(255, 158, 68)'
+                                }, {
+                                    offset: 1,
+                                    color: 'rgb(255, 70, 131)'
+                                }])
+                            },
+                            data: nums
+                        }
+                    ]
+                };
+
+                // 使用刚指定的配置项和数据显示图表。
+                myChart.setOption(option);
+            }
+        )
+    }
+</script>
+</body>
+</html>
